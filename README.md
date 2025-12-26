@@ -5,6 +5,8 @@
 ## 关于 DeepSeek-OCR-vllm
 
 本项目使用了 [DeepSeek-OCR](https://github.com/deepseek-ai/DeepSeek-OCR) 项目中的模型代码。DeepSeek-OCR 是 DeepSeek AI 开源的 OCR 模型，支持使用 vLLM 进行高性能推理。
+![swagger](images/swagger.png)
+![main_page](images/main_page.png)
 
 - **GitHub 地址**: https://github.com/deepseek-ai/DeepSeek-OCR
 - **项目说明**: 本项目中的 `DeepSeek-OCR-vllm/` 目录直接来自原始 GitHub 项目，**未进行任何修改**。本 FastAPI 项目通过 `app/core/lifespan.py` 和 `app/services/ocr_service.py` 调用 DeepSeek-OCR-vllm 的功能，将其封装为 RESTful API 服务。
