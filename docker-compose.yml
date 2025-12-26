@@ -1,0 +1,33 @@
+services:
+  deepseek-ocr-web:
+    build: .
+    container_name: deepseek-ocr-web-test
+    network_mode: host
+    volumes:
+      - /opt/hyhal:/opt/hyhal:ro
+      - /data/models:/models:ro
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+    environment:
+      - HIP_VISIBLE_DEVICES=6
+      - CUDA_VISIBLE_DEVICES=6
+      - VLLM_USE_V1=0
+      - OCR_HOST=0.0.0.0
+      - OCR_PORT=8001
+      - OCR_WORKERS=1
+      - OCR_LOG_LEVEL=INFO
+      - MODEL_PATH=/models/DeepSeek-OCR
+    devices:
+      - /dev/kfd:/dev/kfd:rwm
+      - /dev/mkfd:/dev/mkfd:rwm
+      - /dev/dri:/dev/dri:rwm
+    privileged: true
+    cap_add:
+      - SYS_PTRACE
+    group_add:
+      - video
+    security_opt:
+      - seccomp:unconfined
+      - label:disable
+    shm_size: 128g
+    restart: unless-stopped

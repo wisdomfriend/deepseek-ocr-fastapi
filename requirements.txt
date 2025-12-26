@@ -1,0 +1,31 @@
+# DeepSeek OCR FastAPI Service Dependencies
+
+# Web Framework
+fastapi==0.115.7
+uvicorn[standard]==0.40.0
+
+# Production WSGI Server
+gunicorn==21.2.0
+
+# Image Processing
+Pillow==11.0.0
+numpy==1.26.4
+
+# Data Processing
+pydantic==2.9.2
+
+# FastAPI File Upload Support
+python-multipart==0.0.12
+
+# PDF Processing
+PyMuPDF==1.24.12
+
+# DeepSeek OCR dependencies (from DeepSeek-OCR-vllm)
+# Note: These should be installed from the DeepSeek-OCR-vllm directory
+# vllm
+# transformers
+# torch
+# einops
+# addict
+easydict
+

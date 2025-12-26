@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek OCR Web Service</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+        .upload-area.dragover {
+            border-color: #007bff;
+            background-color: #e3f2fd;
+        }
+        .file-input {
+            display: none;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .result-area {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            display: none;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result-text {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .result-image {
+            max-width: 100%;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #155724;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .config-section {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .config-item {
+            margin: 15px 0;
+        }
+        
+        .config-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .config-select, .config-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            background-color: white;
+        }
+        
+        .config-select:focus, .config-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 DeepSeek OCR Web Service</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>📁 拖拽图片到此处或点击选择文件</p>
+            <p style="color: #666; font-size: 14px;">支持格式: JPG, PNG, BMP, TIFF, WEBP</p>
+            <input type="file" id="fileInput" class="file-input" accept="image/*">
+        </div>
+        
+        <div class="config-section">
+            <div class="config-item">
+                <label for="resolutionSelect">🔧 分辨率大小:</label>
+                <select id="resolutionSelect" class="config-select">
+                    <option value="tiny">Tiny</option>
+                    <option value="small">Small</option>
+                    <option value="base">Base</option>
+                    <option value="large">Large</option>
+                    <option value="gundam" selected>Gundam (推荐)</option>
+                </select>
+            </div>
+            
+            <div class="config-item">
+                <label for="taskTypeSelect">📋 任务类型:</label>
+                <select id="taskTypeSelect" class="config-select">
+                    <option value="free_ocr">自由OCR</option>
+                    <option value="markdown" selected>转换为Markdown</option>
+                    <option value="parse_chart">解析图表</option>
+                    <option value="locate_object">通过参考定位对象</option>
+                </select>
+            </div>
+            
+            <div class="config-item" id="referenceTextItem" style="display: none;">
+                <label for="referenceText">🎯 参考文本 (用于定位任务):</label>
+                <input type="text" id="referenceText" class="config-input" placeholder="输入要查找的文本...">
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <button class="btn" id="processBtn" onclick="processImage()" disabled>处理图像</button>
+            <button class="btn" id="clearBtn" onclick="clearResults()">清除结果</button>
+        </div>
+        
+        <div class="result-area" id="resultArea">
+            <div id="loadingArea" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>正在处理中，请稍候...</p>
+            </div>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentTaskId = null;
+        
+        // 文件上传处理
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const processBtn = document.getElementById('processBtn');
+        const resultArea = document.getElementById('resultArea');
+        const loadingArea = document.getElementById('loadingArea');
+        const resultContent = document.getElementById('resultContent');
+        
+        // 拖拽事件
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        // 点击上传
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('请选择图片文件！');
+                return;
+            }
+            
+            // 显示文件名
+            uploadArea.innerHTML = `
+                <p>✅ 已选择文件: ${file.name}</p>
+                <p style="color: #666; font-size: 14px;">点击"处理图像"按钮开始处理</p>
+            `;
+            
+            processBtn.disabled = false;
+            currentFile = file;
+        }
+        
+        async function processImage() {
+            if (!currentFile) {
+                alert('请先选择图片文件！');
+                return;
+            }
+            
+            // 显示加载状态
+            resultArea.style.display = 'block';
+            loadingArea.style.display = 'block';
+            resultContent.innerHTML = '';
+            processBtn.disabled = true;
+            
+            try {
+                // 获取配置参数
+                const resolution = document.getElementById('resolutionSelect').value;
+                const taskType = document.getElementById('taskTypeSelect').value;
+                const referenceText = document.getElementById('referenceText').value;
+                
+                // 上传文件
+                const formData = new FormData();
+                formData.append('file', currentFile);
+                formData.append('include_visualization', 'true');
+                formData.append('resolution', resolution);
+                formData.append('task_type', taskType);
+                if (referenceText) {
+                    formData.append('reference_text', referenceText);
+                }
+                
+                const response = await fetch('/deepseek-ocr/api/ocr', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.task_id) {
+                    currentTaskId = result.task_id;
+                    // 开始轮询任务状态
+                    pollTaskStatus();
+                } else {
+                    throw new Error(result.error || '上传失败');
+                }
+                
+            } catch (error) {
+                showError('处理失败: ' + error.message);
+                processBtn.disabled = false;
+            }
+        }
+        
+        async function pollTaskStatus() {
+            if (!currentTaskId) return;
+            
+            try {
+                const response = await fetch(`/deepseek-ocr/api/tasks/${currentTaskId}`);
+                const task = await response.json();
+                
+                if (task.status === 'completed') {
+                    showResult(task.result);
+                    processBtn.disabled = false;
+                } else if (task.status === 'failed') {
+                    showError('OCR处理失败: ' + task.error);
+                    processBtn.disabled = false;
+                } else {
+                    // 继续轮询
+                    setTimeout(pollTaskStatus, 1000);
+                }
+            } catch (error) {
+                showError('查询任务状态失败: ' + error.message);
+                processBtn.disabled = false;
+            }
+        }
+        
+        function showResult(result) {
+            loadingArea.style.display = 'none';
+            
+            let html = '<h3>🎉 OCR识别完成</h3>';
+            
+            if (result.text) {
+                html += `
+                    <div class="success">
+                        <h4>📝 识别文本:</h4>
+                        <div class="result-text">${result.text}</div>
+                    </div>
+                `;
+            }
+            
+            if (result.processed_text) {
+                html += `
+                    <div class="success">
+                        <h4>📄 格式化文本:</h4>
+                        <div class="result-text">${result.processed_text}</div>
+                    </div>
+                `;
+            }
+            
+            if (result.visualization_path) {
+                html += `
+                    <div class="success">
+                        <h4>🖼️ 可视化结果:</h4>
+                        <img src="${result.visualization_path}" class="result-image" alt="可视化结果">
+                    </div>
+                `;
+            }
+            
+            if (result.markdown_path) {
+                html += `
+                    <div class="success">
+                        <h4>📋 下载结果:</h4>
+                        <a href="${result.markdown_path}" download class="btn">下载Markdown文件</a>
+                    </div>
+                `;
+            }
+            
+            resultContent.innerHTML = html;
+        }
+        
+        function showError(message) {
+            loadingArea.style.display = 'none';
+            resultContent.innerHTML = `
+                <div class="error">
+                    <h4>❌ 错误</h4>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+        
+        function clearResults() {
+            resultArea.style.display = 'none';
+            resultContent.innerHTML = '';
+            uploadArea.innerHTML = `
+                <p>📁 拖拽图片到此处或点击选择文件</p>
+                <p style="color: #666; font-size: 14px;">支持格式: JPG, PNG, BMP, TIFF, WEBP</p>
+            `;
+            processBtn.disabled = true;
+            currentFile = null;
+            currentTaskId = null;
+        }
+        
+        let currentFile = null;
+        
+        // 任务类型变化处理
+        document.getElementById('taskTypeSelect').addEventListener('change', function() {
+            const referenceTextItem = document.getElementById('referenceTextItem');
+            if (this.value === 'locate_object') {
+                referenceTextItem.style.display = 'block';
+            } else {
+                referenceTextItem.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,4 @@
+"""
+DeepSeek OCR FastAPI Application
+"""
+
